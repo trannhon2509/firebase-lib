@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useFirestoreCacheOnce } from './useFirestoreCacheOnce';
 
 function App() {
-  const { data: products, loadMore, hasMore, addItem, updateItem, deleteItem } = useFirestoreCacheOnce('products', 3);
+  const { data: products, addItem, updateItem, deleteItem } = useFirestoreCacheOnce('products');
   const [form, setForm] = useState({ name: '', price: '' });
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', price: '' });
@@ -92,9 +92,6 @@ function App() {
           )}
         </tbody>
       </table>
-      {hasMore && (
-        <button onClick={loadMore} style={{ marginTop: 12 }} disabled={loading}>Load More</button>
-      )}
     </div>
   );
 }

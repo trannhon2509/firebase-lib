@@ -8,21 +8,17 @@ import {
 import { db } from "./firebase";
 import { doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
-export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
+export function useFirestoreCacheOnce(collectionName) { // Bỏ pageSize
   const localKey = `cache_${collectionName}`;
   const [data, setData] = useState([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
 
   // Luôn lấy dữ liệu từ localStorage khi khởi tạo
   useEffect(() => {
     const cachedRaw = localStorage.getItem(localKey);
     const cached = cachedRaw ? JSON.parse(cachedRaw) : [];
     setData(cached);
-    setHasMore(cached.length > pageSize);
-    setPage(1);
     console.log('Lấy từ store');
-  }, [collectionName, localKey, pageSize]);
+  }, [collectionName, localKey]);
 
   useEffect(() => {
     const onStorage = (e) => {
@@ -30,14 +26,12 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
         const cachedRaw = localStorage.getItem(localKey);
         const cached = cachedRaw ? JSON.parse(cachedRaw) : [];
         setData(cached);
-        setHasMore(cached.length > pageSize);
-        setPage(1);
         console.log('Lấy từ store');
       }
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
-  }, [localKey, pageSize]);
+  }, [localKey]);
 
   // Chỉ cập nhật khi có dữ liệu mới trên Firebase
   useEffect(() => {
@@ -66,29 +60,17 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
       if (isDifferent) {
         localStorage.setItem(localKey, JSON.stringify(serverData));
         setData(serverData);
-        setHasMore(serverData.length > pageSize);
-        setPage(1);
         console.log('Lấy từ firebase');
       }
     });
     return () => unsubscribe();
-  }, [collectionName, localKey, pageSize]);
-
-  const pagedData = data.slice(0, page * pageSize);
-
-  const loadMore = () => {
-    const nextPage = page + 1;
-    const nextPaged = data.slice(0, nextPage * pageSize);
-    setPage(nextPage);
-    setHasMore(nextPaged.length < data.length);
-  };
+  }, [collectionName, localKey]);
 
   // Thêm tài liệu mới
   const addItem = async (item) => {
     const ref = doc(collection(db, collectionName));
     const newItem = { ...item, updatedAt: { seconds: Math.floor(Date.now() / 1000) } };
     await setDoc(ref, newItem);
-    // Không cần gọi checkNeedUpdate nữa vì đã có onSnapshot
     return ref.id;
   };
 
@@ -96,21 +78,16 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
   const updateItem = async (id, updates) => {
     const ref = doc(db, collectionName, id);
     await updateDoc(ref, { ...updates, updatedAt: { seconds: Math.floor(Date.now() / 1000) } });
-    // Không cần gọi checkNeedUpdate nữa
   };
 
   // Xóa tài liệu theo id
   const deleteItem = async (id) => {
     const ref = doc(db, collectionName, id);
     await deleteDoc(ref);
-    // Không cần gọi checkNeedUpdate nữa
   };
 
   return {
-    data: pagedData,
-    loadMore,
-    hasMore,
-    refresh: () => {}, // Không cần refresh thủ công nữa
+    data,
     addItem,
     updateItem,
     deleteItem,
