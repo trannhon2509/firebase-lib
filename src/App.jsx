@@ -2,7 +2,18 @@ import React, { useState } from 'react';
 import { useFirestoreCacheOnce } from './useFirestoreCacheOnce';
 
 function App() {
-  const { data: products, loadMore, hasMore, addItem, updateItem, deleteItem } = useFirestoreCacheOnce('products', 3);
+  const {
+    data: products,
+    currentPage,
+    totalPages,
+    goToPage,
+    nextPage,
+    prevPage,
+    pageSize,
+    addItem,
+    updateItem,
+    deleteItem
+  } = useFirestoreCacheOnce('products', 3);
   const [form, setForm] = useState({ name: '', price: '' });
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', price: '' });
@@ -40,6 +51,32 @@ function App() {
     setLoading(true);
     await deleteItem(id);
     setLoading(false);
+  };
+
+  // Render các nút số trang
+  const renderPageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => goToPage(i)}
+          disabled={currentPage === i || loading}
+          style={{
+            margin: '0 2px',
+            fontWeight: currentPage === i ? 'bold' : 'normal',
+            background: currentPage === i ? '#1976d2' : '#fff',
+            color: currentPage === i ? '#fff' : '#000',
+            border: '1px solid #1976d2',
+            borderRadius: 3,
+            minWidth: 32
+          }}
+        >
+          {i}
+        </button>
+      );
+    }
+    return pages;
   };
 
   return (
@@ -92,9 +129,15 @@ function App() {
           )}
         </tbody>
       </table>
-      {hasMore && (
-        <button onClick={loadMore} style={{ marginTop: 12 }} disabled={loading}>Load More</button>
-      )}
+      {/* Pagination controls */}
+      <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button onClick={prevPage} disabled={currentPage === 1 || loading}>Prev</button>
+        {renderPageNumbers()}
+        <button onClick={nextPage} disabled={currentPage === totalPages || loading}>Next</button>
+        <span style={{ marginLeft: 8 }}>
+          Trang {currentPage}/{totalPages} (mỗi trang {pageSize} sản phẩm)
+        </span>
+      </div>
     </div>
   );
 }
