@@ -1,10 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import {
   collection,
-  getDocs,
   orderBy,
   query,
-  limit,
+  onSnapshot 
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
@@ -22,9 +21,9 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
     setData(cached);
     setHasMore(cached.length > pageSize);
     setPage(1);
+    console.log('[FirestoreCache] Load from localStorage:', cached);
   }, [collectionName, localKey, pageSize]);
 
-  // Lắng nghe sự kiện storage để tự động cập nhật khi localStorage thay đổi ở tab khác
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key === localKey) {
@@ -33,35 +32,21 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
         setData(cached);
         setHasMore(cached.length > pageSize);
         setPage(1);
+        console.log('[FirestoreCache] Storage event, load from localStorage:', cached);
       }
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, [localKey, pageSize]);
 
-  // Chỉ kiểm tra và cập nhật nếu có dữ liệu mới trên Firestore
-  const checkNeedUpdate = useCallback(async () => {
-    const cachedRaw = localStorage.getItem(localKey);
-    const cached = cachedRaw ? JSON.parse(cachedRaw) : [];
-    const latestLocal = cached[0]?.updatedAt?.seconds || 0;
-
-    // Lấy updatedAt mới nhất trên server
+  // Lắng nghe realtime Firestore bằng onSnapshot
+  useEffect(() => {
     const q = query(
       collection(db, collectionName),
-      orderBy("updatedAt", "desc"),
-      limit(1)
+      orderBy("updatedAt", "desc")
     );
-    const snapshot = await getDocs(q);
-    const latestServer = snapshot.docs[0]?.data()?.updatedAt?.seconds || 0;
-
-    if (latestServer > latestLocal) {
-      // Có dữ liệu mới, lấy toàn bộ và cập nhật localStorage
-      const allQ = query(
-        collection(db, collectionName),
-        orderBy("updatedAt", "desc")
-      );
-      const allSnap = await getDocs(allQ);
-      const serverData = allSnap.docs.map((doc) => ({
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const serverData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
@@ -69,21 +54,10 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
       setData(serverData);
       setHasMore(serverData.length > pageSize);
       setPage(1);
-    }
-    // Nếu không có dữ liệu mới thì không làm gì, giữ nguyên local
+      console.log('[FirestoreCache] onSnapshot update:', serverData);
+    });
+    return () => unsubscribe();
   }, [collectionName, localKey, pageSize]);
-
-  useEffect(() => {
-    checkNeedUpdate();
-    // eslint-disable-next-line
-  }, [collectionName]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      checkNeedUpdate();
-    }, 30000); // Kiểm tra mỗi 30 giây
-    return () => clearInterval(interval);
-  }, [collectionName, checkNeedUpdate]);
 
   const pagedData = data.slice(0, page * pageSize);
 
@@ -99,7 +73,7 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
     const ref = doc(collection(db, collectionName));
     const newItem = { ...item, updatedAt: { seconds: Math.floor(Date.now() / 1000) } };
     await setDoc(ref, newItem);
-    await checkNeedUpdate();
+    // Không cần gọi checkNeedUpdate nữa vì đã có onSnapshot
     return ref.id;
   };
 
@@ -107,21 +81,21 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
   const updateItem = async (id, updates) => {
     const ref = doc(db, collectionName, id);
     await updateDoc(ref, { ...updates, updatedAt: { seconds: Math.floor(Date.now() / 1000) } });
-    await checkNeedUpdate();
+    // Không cần gọi checkNeedUpdate nữa
   };
 
   // Xóa tài liệu theo id
   const deleteItem = async (id) => {
     const ref = doc(db, collectionName, id);
     await deleteDoc(ref);
-    await checkNeedUpdate();
+    // Không cần gọi checkNeedUpdate nữa
   };
 
   return {
     data: pagedData,
     loadMore,
     hasMore,
-    refresh: checkNeedUpdate,
+    refresh: () => {}, // Không cần refresh thủ công nữa
     addItem,
     updateItem,
     deleteItem,
