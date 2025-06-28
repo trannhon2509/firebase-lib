@@ -21,7 +21,7 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
     setData(cached);
     setHasMore(cached.length > pageSize);
     setPage(1);
-    console.log('[FirestoreCache] Load from localStorage:', cached);
+    console.log('Lấy từ store');
   }, [collectionName, localKey, pageSize]);
 
   useEffect(() => {
@@ -32,15 +32,21 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
         setData(cached);
         setHasMore(cached.length > pageSize);
         setPage(1);
-        console.log('[FirestoreCache] Storage event, load from localStorage:', cached);
+        console.log('Lấy từ store');
       }
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, [localKey, pageSize]);
 
-  // Lắng nghe realtime Firestore bằng onSnapshot
+  // Chỉ cập nhật khi có dữ liệu mới trên Firebase
   useEffect(() => {
+    // Hàm chỉ lấy các trường cần so sánh (id, updatedAt)
+    const extractCompareFields = (arr) =>
+      arr.map((item) => ({
+        id: item.id,
+        updatedAt: item.updatedAt?.seconds || item.updatedAt || null,
+      }));
     const q = query(
       collection(db, collectionName),
       orderBy("updatedAt", "desc")
@@ -50,11 +56,20 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
         id: doc.id,
         ...doc.data(),
       }));
-      localStorage.setItem(localKey, JSON.stringify(serverData));
-      setData(serverData);
-      setHasMore(serverData.length > pageSize);
-      setPage(1);
-      console.log('[FirestoreCache] onSnapshot update:', serverData);
+      const cachedRaw = localStorage.getItem(localKey);
+      const cached = cachedRaw ? JSON.parse(cachedRaw) : [];
+      // So sánh chỉ các trường id, updatedAt
+      const serverCompare = extractCompareFields(serverData);
+      const cachedCompare = extractCompareFields(cached);
+      const isDifferent = JSON.stringify(serverCompare) !== JSON.stringify(cachedCompare);
+      console.log('So sánh dữ liệu mới với local:', isDifferent);
+      if (isDifferent) {
+        localStorage.setItem(localKey, JSON.stringify(serverData));
+        setData(serverData);
+        setHasMore(serverData.length > pageSize);
+        setPage(1);
+        console.log('Lấy từ firebase');
+      }
     });
     return () => unsubscribe();
   }, [collectionName, localKey, pageSize]);

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useFirestoreCacheOnce } from './useFirestoreCacheOnce';
 
 function App() {
-  const { data: products, loadMore, hasMore, refresh, addItem, updateItem, deleteItem } = useFirestoreCacheOnce('products', 10);
+  const { data: products, loadMore, hasMore, addItem, updateItem, deleteItem } = useFirestoreCacheOnce('products', 3);
   const [form, setForm] = useState({ name: '', price: '' });
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', price: '' });
@@ -45,7 +45,6 @@ function App() {
   return (
     <div style={{ padding: 24 }}>
       <h2>Products</h2>
-      <button onClick={refresh} style={{ marginBottom: 12 }} disabled={loading}>Refresh</button>
       <form onSubmit={editId ? handleUpdate : handleAdd} style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
         <input
           type="text"
