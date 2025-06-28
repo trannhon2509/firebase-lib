@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   collection,
   getDocs,
@@ -40,7 +40,7 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
   }, [localKey, pageSize]);
 
   // Chỉ kiểm tra và cập nhật nếu có dữ liệu mới trên Firestore
-  const checkNeedUpdate = async () => {
+  const checkNeedUpdate = useCallback(async () => {
     const cachedRaw = localStorage.getItem(localKey);
     const cached = cachedRaw ? JSON.parse(cachedRaw) : [];
     const latestLocal = cached[0]?.updatedAt?.seconds || 0;
@@ -71,12 +71,19 @@ export function useFirestoreCacheOnce(collectionName, pageSize = 10) {
       setPage(1);
     }
     // Nếu không có dữ liệu mới thì không làm gì, giữ nguyên local
-  };
+  }, [collectionName, localKey, pageSize]);
 
   useEffect(() => {
     checkNeedUpdate();
     // eslint-disable-next-line
   }, [collectionName]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkNeedUpdate();
+    }, 30000); // Kiểm tra mỗi 30 giây
+    return () => clearInterval(interval);
+  }, [collectionName, checkNeedUpdate]);
 
   const pagedData = data.slice(0, page * pageSize);
 
