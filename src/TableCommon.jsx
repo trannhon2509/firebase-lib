@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Table, Input, Button, Space } from 'antd';
+import { Table, Input, Button, Space, Select } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
 const TableCommon = ({ columns, dataSource, rowKey = 'id' }) => {
     const [numberRange, setNumberRange] = useState({});
     const [dateRange, setDateRange] = useState({});
+    const [pageSize, setPageSize] = useState(10); // Thêm state cho pageSize
 
     // Filter for text search
     const getColumnSearchProps = (dataIndex) => {
@@ -229,12 +230,35 @@ const TableCommon = ({ columns, dataSource, rowKey = 'id' }) => {
     });
 
     return (
-        <Table
-            columns={enhancedColumns}
-            dataSource={dataSource}
-            rowKey={rowKey}
-            pagination={{ pageSize: 10 }}
-        />
+        <div>
+            <Table
+                columns={enhancedColumns}
+                dataSource={dataSource}
+                rowKey={rowKey}
+                pagination={{
+                    pageSize,
+                    showSizeChanger: false,
+                    showTotal: () => (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span>Hiển thị:</span>
+                            <Select
+                                value={pageSize}
+                                onChange={setPageSize}
+                                style={{ width: 80 }}
+                                options={[
+                                    { value: 5, label: '5' },
+                                    { value: 10, label: '10' },
+                                    { value: 20, label: '20' },
+                                    { value: 50, label: '50' },
+                                ]}
+                                size="small"
+                            />
+                            <span>dòng/trang</span>
+                        </div>
+                    ),
+                }}
+            />
+        </div>
     );
 };
 
