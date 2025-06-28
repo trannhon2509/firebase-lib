@@ -8,7 +8,7 @@ import {
 import { db } from "./firebase";
 import { doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
-export function useFirestoreCacheOnce(collectionName) { // Bỏ pageSize
+export function useFirestoreCacheOnce(collectionName) { 
   const localKey = `cache_${collectionName}`;
   const [data, setData] = useState([]);
 

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useFirestoreCacheOnce } from './useFirestoreCacheOnce';
+import TableCommon from './TableCommon';
+import { Button, Space } from 'antd';
 
 function App() {
   const { data: products, addItem, updateItem, deleteItem } = useFirestoreCacheOnce('products');
@@ -42,6 +44,45 @@ function App() {
     setLoading(false);
   };
 
+  const columns = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'id',
+      width: 120,
+      searchable: true,
+    },
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      searchable: true,
+    },
+    {
+      title: 'Price',
+      dataIndex: 'price',
+      key: 'price',
+      searchable: true,
+      render: (price) => price !== undefined ? price : '-',
+    },
+    {
+      title: 'Updated At',
+      dataIndex: 'updatedAt',
+      key: 'updatedAt',
+      render: (updatedAt) => updatedAt?.seconds ? new Date(updatedAt.seconds * 1000).toLocaleString() : '-',
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, product) => (
+        <Space>
+          <Button onClick={() => startEdit(product)} disabled={loading} size="small">Edit</Button>
+          <Button onClick={() => handleDelete(product.id)} disabled={loading} size="small" danger>Delete</Button>
+        </Space>
+      ),
+    },
+  ];
+
   return (
     <div style={{ padding: 24 }}>
       <h2>Products</h2>
@@ -63,35 +104,7 @@ function App() {
         <button type="submit" disabled={loading}>{editId ? 'Save' : 'Add'}</button>
         {editId && <button type="button" onClick={() => { setEditId(null); setEditForm({ name: '', price: '' }); }}>Cancel</button>}
       </form>
-      <table border="1" cellPadding="8" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Updated At</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.length === 0 ? (
-            <tr><td colSpan="5" style={{ textAlign: 'center' }}>No products</td></tr>
-          ) : (
-            products.map(product => (
-              <tr key={product.id}>
-                <td>{product.id}</td>
-                <td>{product.name || '-'}</td>
-                <td>{product.price !== undefined ? product.price : '-'}</td>
-                <td>{product.updatedAt?.seconds ? new Date(product.updatedAt.seconds * 1000).toLocaleString() : '-'}</td>
-                <td>
-                  <button onClick={() => startEdit(product)} disabled={loading}>Edit</button>
-                  <button onClick={() => handleDelete(product.id)} disabled={loading} style={{ marginLeft: 4 }}>Delete</button>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+      <TableCommon columns={columns} dataSource={products} rowKey="id" />
     </div>
   );
 }
